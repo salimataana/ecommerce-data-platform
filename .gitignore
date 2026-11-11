@@ -22,6 +22,11 @@ data/gold/
 data/raw/
 data/processed/
 
+# Autres données locales et échantillons temporaires
+data/test_samples/
+data/tmp/
+data/.DS_Store
+
 # Airflow
 airflow/airflow.db
 airflow/airflow.cfg

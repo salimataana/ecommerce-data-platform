@@ -1,35 +1,92 @@
-from src.utils.spark_session import create_spark_session
-from src.quality.data_quality import validate_products
+import pytest
+
+from src.quality.data_quality import (
+    ProductDataValidator,
+    validate_products,
+)
 
 
-def test_invalid_products():
+@pytest.mark.parametrize(
+    "products, expected",
+    [
+        pytest.param(
+            [(1, "iPhone", 100.0, 10)],
+            True,
+            id="produit_valide",
+        ),
+        pytest.param(
+            [(1, "iPhone", 100.0, 10),
+             (2, "Samsung", 200.0, 20)],
+            True,
+            id="plusieurs_produits_valides",
+        ),
+        pytest.param(
+            [(None, "iPhone", 100.0, 10)],
+            False,
+            id="identifiant_null",
+        ),
+        pytest.param(
+            [(1, "iPhone", 100.0, 10),
+             (1, "Samsung", 200.0, 20)],
+            False,
+            id="identifiant_duplique",
+        ),
+        pytest.param(
+            [(1, "iPhone", -100.0, 10)],
+            False,
+            id="prix_negatif",
+        ),
+        pytest.param(
+            [(1, "iPhone", 100.0, -5)],
+            False,
+            id="stock_negatif",
+        ),
+        pytest.param(
+            [(1, None, 100.0, 10)],
+            False,
+            id="titre_null",
+        ),
+        pytest.param(
+            [(1, "", 100.0, 10)],
+            False,
+            id="titre_vide",
+        ),
+        pytest.param(
+            [(1, "iPhone", 0.0, 0)],
+            True,
+            id="prix_et_stock_zero",
+        ),
+    ],
+)
+def test_product_data_validation(spark, products, expected):
 
-    spark = create_spark_session("TestDataQuality")
+    df = spark.createDataFrame(
+        products,
+        schema="""
+            id BIGINT,
+            title STRING,
+            price DOUBLE,
+            stock INT
+        """,
+    )
 
-    try:
-        # Données volontairement incorrectes
-        data = [
-            (1, "Produit A", 10.0, 5),
-            (1, "Produit B", -20.0, 3),
-            (3, "Produit C", 15.0, -2),
-        ]
+    validator = ProductDataValidator(df)
 
-        columns = ["id", "title", "price", "stock"]
+    result = validator.validate()
 
-        df = spark.createDataFrame(data, columns)
-
-        # Great Expectations doit refuser ces données
-        is_valid = validate_products(df)
-
-        assert is_valid is False, (
-            "ERREUR : les données invalides ont été acceptées"
-        )
-
-        print("\nTEST RÉUSSI : les anomalies ont été détectées.")
-
-    finally:
-        spark.stop()
+    assert result is expected
 
 
-if __name__ == "__main__":
-    test_invalid_products()
+def test_validate_products_compatibility(spark):
+
+    df = spark.createDataFrame(
+        [(1, "iPhone", 100.0, 10)],
+        schema="""
+            id BIGINT,
+            title STRING,
+            price DOUBLE,
+            stock INT
+        """,
+    )
+
+    assert validate_products(df) is True
