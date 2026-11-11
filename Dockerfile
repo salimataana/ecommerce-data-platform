@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim-trixie
 
 # Installer Java 21 pour PySpark 4
 RUN apt-get update && \
@@ -16,7 +16,7 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copier les fichiers du projet
+# Copier le code
 COPY src/ ./src/
 COPY config/ ./config/
 
