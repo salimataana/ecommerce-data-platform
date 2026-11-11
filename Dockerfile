@@ -18,7 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copier le code
 COPY src/ ./src/
-COPY config/ ./config/
 
 # Commande par défaut
 CMD ["python", "-m", "src.ingestion.api_ingestion"]
