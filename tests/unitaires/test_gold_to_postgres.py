@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-from sqlalchemy import text
 
 from src.loading.gold_to_postgres import PostgresLoader
 
@@ -24,6 +23,7 @@ def loader(spark, tmp_path):
 # TEST 1 : Vérifier l'injection des dépendances
 # ============================================================
 
+
 def test_dependencies_injected(loader, spark):
     assert loader.spark is spark
     assert loader._owns_spark is False
@@ -33,6 +33,7 @@ def test_dependencies_injected(loader, spark):
 # ============================================================
 # TEST 2 : Lire les données Gold
 # ============================================================
+
 
 def test_read_gold(loader, spark):
     df = spark.createDataFrame(
@@ -56,6 +57,7 @@ def test_read_gold(loader, spark):
 # ============================================================
 # TEST 3 : Conversion Spark vers Pandas
 # ============================================================
+
 
 @pytest.mark.parametrize(
     "products",
@@ -94,6 +96,7 @@ def test_to_pandas(loader, spark, products):
 # TEST 4 : Vérification de l'existence de la table
 # ============================================================
 
+
 @pytest.mark.parametrize(
     "exists",
     [True, False],
@@ -112,6 +115,7 @@ def test_table_exists(loader, exists):
 # ============================================================
 # TEST 5 : Chargement PostgreSQL
 # ============================================================
+
 
 @pytest.mark.parametrize(
     "table_exists",
@@ -161,6 +165,7 @@ def test_load_gold(loader, table_exists):
 # TEST 6 : Rejeter une table non autorisée
 # ============================================================
 
+
 @pytest.mark.parametrize(
     "schema_name, table_name",
     [
@@ -201,6 +206,7 @@ def test_unauthorized_table(spark, tmp_path, schema_name, table_name):
 # ============================================================
 # TEST 7 : Exécution complète simulée
 # ============================================================
+
 
 def test_run_pipeline(loader, spark):
     df = spark.createDataFrame(

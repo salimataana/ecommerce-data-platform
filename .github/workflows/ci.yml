@@ -1,0 +1,86 @@
+name: Ecommerce Data Platform CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: Python Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+
+        env:
+          POSTGRES_DB: ecommerce_test_db
+          POSTGRES_USER: ecommerce_user
+          POSTGRES_PASSWORD: ecommerce_test_password
+
+        ports:
+          - 5434:5432
+
+        options: >-
+          --health-cmd "pg_isready -U ecommerce_user -d ecommerce_test_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: "5434"
+      DB_NAME: ecommerce_test_db
+      DB_USER: ecommerce_user
+      DB_PASSWORD: ecommerce_test_password
+      PYTHONPATH: ${{ github.workspace }}
+      SPARK_LOCAL_IP: 127.0.0.1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Vérification de la qualité du code
+      - name: Ruff lint
+        run: |
+          ruff check src/ tests/
+
+      # Vérification du formatage
+      - name: Ruff format
+        run: |
+          ruff format --check src/ tests/
+
+      # Tests unitaires
+      - name: Run unit tests
+        run: |
+          python -m pytest tests/unitaires/ -v
+
+      # Tests d'intégration
+      - name: Run integration tests
+        run: |
+          python -m pytest tests/integration/ -v
+
+      # Test End-to-End
+      - name: Run E2E tests
+        run: |
+          python -m pytest tests/e2e/ -v

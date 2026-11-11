@@ -7,10 +7,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s"
+    level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s"
 )
 
 logger = logging.getLogger(__name__)
@@ -39,7 +37,7 @@ class ProductAPIClient:
             total=3,
             backoff_factor=1,
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["GET"]
+            allowed_methods=["GET"],
         )
 
         adapter = HTTPAdapter(max_retries=retry_strategy)
@@ -59,22 +57,13 @@ class ProductAPIClient:
         total = None
 
         with self.create_session() as session:
-
             while total is None or skip < total:
-
                 logger.info(
-                    "Récupération des produits : skip=%s, limit=%s",
-                    skip,
-                    self.limit
+                    "Récupération des produits : skip=%s, limit=%s", skip, self.limit
                 )
 
                 response = session.get(
-                    self.api_url,
-                    params={
-                        "limit": self.limit,
-                        "skip": skip
-                    },
-                    timeout=30
+                    self.api_url, params={"limit": self.limit, "skip": skip}, timeout=30
                 )
 
                 response.raise_for_status()
@@ -99,48 +88,29 @@ class ProductAPIClient:
                     logger.info("Nombre total de produits : %s", total)
 
                 if not products and skip < total:
-                    raise ValueError(
-                        "Page vide reçue avant la fin de la pagination"
-                    )
+                    raise ValueError("Page vide reçue avant la fin de la pagination")
 
                 all_products.extend(products)
 
-                logger.info(
-                    "%s produits récupérés sur %s",
-                    len(all_products),
-                    total
-                )
+                logger.info("%s produits récupérés sur %s", len(all_products), total)
 
                 skip += len(products)
 
-        logger.info(
-            "Extraction terminée : %s produits récupérés",
-            len(all_products)
-        )
+        logger.info("Extraction terminée : %s produits récupérés", len(all_products))
 
-        return {
-            "products": all_products,
-            "total": len(all_products)
-        }
+        return {"products": all_products, "total": len(all_products)}
 
     def save_raw_data(self, data):
         """Enregistre les produits au format JSON dans Bronze."""
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        timestamp = datetime.now(timezone.utc).strftime(
-            "%Y%m%d_%H%M%S_%f"
-        )
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
 
         filename = self.output_dir / f"products_{timestamp}.json"
 
         with open(filename, "w", encoding="utf-8") as file:
-            json.dump(
-                data,
-                file,
-                ensure_ascii=False,
-                indent=4
-            )
+            json.dump(data, file, ensure_ascii=False, indent=4)
 
         logger.info("Données enregistrées : %s", filename)
 
@@ -159,6 +129,7 @@ class ProductAPIClient:
 
 
 # Fonctions conservées pour la compatibilité avec le code existant.
+
 
 def create_session():
     return ProductAPIClient().create_session()

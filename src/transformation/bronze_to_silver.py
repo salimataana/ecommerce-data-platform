@@ -1,17 +1,16 @@
 import logging
 from pathlib import Path
 
-from pyspark.sql import SparkSession, DataFrame
-from pyspark.sql.functions import explode, col
+from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql.functions import col, explode
 
-from src.utils.spark_session import create_spark_session
+from src.quality.data_quality import validate_products
 from src.transformation.product_transformations import (
-    flatten_products,
     convert_dates,
+    flatten_products,
     normalize_products,
 )
-from src.quality.data_quality import validate_products
-
+from src.utils.spark_session import create_spark_session
 
 logger = logging.getLogger(__name__)
 
@@ -65,19 +64,13 @@ class BronzeToSilverTransformer:
     def read(self, file_path: Path) -> DataFrame:
         """Lit le fichier JSON Bronze."""
 
-        return (
-            self.spark.read
-            .option("multiLine", True)
-            .json(str(file_path))
-        )
+        return self.spark.read.option("multiLine", True).json(str(file_path))
 
     def transform(self, df: DataFrame) -> DataFrame:
         """Transforme les données JSON en données Silver."""
 
         # Chaque produit devient une ligne.
-        df_products = df.select(
-            explode(col("products")).alias("product")
-        )
+        df_products = df.select(explode(col("products")).alias("product"))
 
         # Extraction des champs du produit.
         df_silver = df_products.select("product.*")
@@ -95,20 +88,14 @@ class BronzeToSilverTransformer:
         is_valid = validate_products(df)
 
         if not is_valid:
-            raise ValueError(
-                "Échec de la validation des données"
-            )
+            raise ValueError("Échec de la validation des données")
 
         logger.info("Validation des données réussie")
 
     def write(self, df: DataFrame) -> None:
         """Enregistre les données Silver au format Parquet."""
 
-        (
-            df.write
-            .mode("overwrite")
-            .parquet(str(self.silver_dir))
-        )
+        (df.write.mode("overwrite").parquet(str(self.silver_dir)))
 
         logger.info(
             "Données Silver enregistrées : %s",
@@ -144,9 +131,7 @@ class BronzeToSilverTransformer:
 
             self.write(df_transformed)
 
-            logger.info(
-                "Pipeline Bronze vers Silver terminé avec succès"
-            )
+            logger.info("Pipeline Bronze vers Silver terminé avec succès")
 
         finally:
             # Ne ferme Spark que si cette classe l'a créé.
@@ -157,6 +142,7 @@ class BronzeToSilverTransformer:
 # ============================================================
 # Compatibilité avec les commandes existantes et Airflow
 # ============================================================
+
 
 def read_bronze():
     """Point d'entrée historique du pipeline."""

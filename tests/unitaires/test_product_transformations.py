@@ -1,26 +1,25 @@
 from datetime import datetime
 
 import pytest
-
 from pyspark.sql import Row
 from pyspark.sql.types import (
-    StructType,
-    StructField,
     IntegerType,
     StringType,
+    StructField,
+    StructType,
     TimestampType,
 )
 
 from src.transformation.product_transformations import (
-    flatten_products,
     convert_dates,
+    flatten_products,
     normalize_products,
 )
-
 
 # ============================================================
 # TEST 1 : APLATISSEMENT DES CHAMPS IMBRIQUÉS
 # ============================================================
+
 
 @pytest.mark.parametrize(
     "width, height, depth, barcode, qr_code",
@@ -101,6 +100,7 @@ def test_flatten_products(
 # TEST 2 : CONVERSION DES DATES
 # ============================================================
 
+
 @pytest.mark.parametrize(
     "created_at, updated_at",
     [
@@ -172,6 +172,7 @@ def test_convert_dates(
 # TEST 3 : NORMALISATION DES CHAÎNES DE CARACTÈRES
 # ============================================================
 
+
 @pytest.mark.parametrize(
     "title, category, brand, sku, expected",
     [
@@ -233,13 +234,15 @@ def test_normalize_products(
     sku,
     expected,
 ):
-    schema = StructType([
-        StructField("id", IntegerType(), False),
-        StructField("title", StringType(), True),
-        StructField("category", StringType(), True),
-        StructField("brand", StringType(), True),
-        StructField("sku", StringType(), True),
-    ])
+    schema = StructType(
+        [
+            StructField("id", IntegerType(), False),
+            StructField("title", StringType(), True),
+            StructField("category", StringType(), True),
+            StructField("brand", StringType(), True),
+            StructField("sku", StringType(), True),
+        ]
+    )
 
     df = spark.createDataFrame(
         [(1, title, category, brand, sku)],
@@ -263,6 +266,7 @@ def test_normalize_products(
 # ============================================================
 # TEST 4 : CONSERVATION DU NOMBRE DE PRODUITS
 # ============================================================
+
 
 @pytest.mark.parametrize(
     "products",
@@ -317,6 +321,7 @@ def test_normalize_products_row_count(
 # ============================================================
 # TEST 5 : VÉRIFIER LES COLONNES APRÈS NORMALISATION
 # ============================================================
+
 
 def test_normalize_products_preserves_columns(spark):
     schema = """

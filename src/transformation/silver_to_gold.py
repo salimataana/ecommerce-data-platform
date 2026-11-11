@@ -1,11 +1,11 @@
 import logging
 from pathlib import Path
-from src.quality.data_quality import GoldDataValidator
+
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 
+from src.quality.data_quality import GoldDataValidator
 from src.utils.spark_session import create_spark_session
-
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +37,7 @@ class SilverToGoldTransformer:
         self._owns_spark = spark is None
 
         self.spark = (
-            spark
-            if spark is not None
-            else create_spark_session("SilverToGold")
+            spark if spark is not None else create_spark_session("SilverToGold")
         )
 
     def read(self) -> DataFrame:
@@ -73,11 +71,7 @@ class SilverToGoldTransformer:
     def write(self, df: DataFrame) -> None:
         """Enregistre les indicateurs Gold en Parquet."""
 
-        (
-            df.write
-            .mode("overwrite")
-            .parquet(str(self.gold_dir))
-        )
+        (df.write.mode("overwrite").parquet(str(self.gold_dir)))
 
         logger.info(
             "Données Gold enregistrées : %s",
@@ -90,9 +84,7 @@ class SilverToGoldTransformer:
         validator = GoldDataValidator(df)
 
         if not validator.validate():
-            raise ValueError(
-                "Échec de la validation des données Gold"
-            )
+            raise ValueError("Échec de la validation des données Gold")
 
     def run(self) -> None:
         """Exécute le pipeline complet Silver vers Gold."""
@@ -119,9 +111,7 @@ class SilverToGoldTransformer:
             # 5. Enregistrer les données Gold
             self.write(df_gold)
 
-            logger.info(
-                "Pipeline Silver vers Gold terminé avec succès"
-            )
+            logger.info("Pipeline Silver vers Gold terminé avec succès")
 
         finally:
             if self._owns_spark:

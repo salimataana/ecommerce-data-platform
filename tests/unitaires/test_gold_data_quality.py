@@ -3,7 +3,6 @@ import pytest
 from src.quality.data_quality import GoldDataValidator
 from src.transformation.silver_to_gold import SilverToGoldTransformer
 
-
 GOLD_SCHEMA = """
     category STRING,
     total_products BIGINT,

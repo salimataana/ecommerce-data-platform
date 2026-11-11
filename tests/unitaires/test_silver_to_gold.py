@@ -2,10 +2,10 @@ import pytest
 
 from src.transformation.silver_to_gold import SilverToGoldTransformer
 
-
 # ============================================================
 # TEST 1 : Agrégation des produits par catégorie
 # ============================================================
+
 
 @pytest.mark.parametrize(
     "products, expected",
@@ -84,6 +84,7 @@ def test_transform_products(spark, tmp_path, products, expected):
 # TEST 2 : Gestion des prix nuls
 # ============================================================
 
+
 @pytest.mark.parametrize(
     "products, expected_average",
     [
@@ -123,6 +124,7 @@ def test_null_prices(spark, tmp_path, products, expected_average):
 # TEST 3 : Lecture des fichiers Silver
 # ============================================================
 
+
 def test_read_silver(spark, tmp_path):
 
     silver_dir = tmp_path / "silver"
@@ -149,6 +151,7 @@ def test_read_silver(spark, tmp_path):
 # ============================================================
 # TEST 4 : Écriture des fichiers Gold
 # ============================================================
+
 
 @pytest.mark.parametrize(
     "products",
@@ -192,9 +195,7 @@ def test_write_gold(spark, tmp_path, products):
 
     assert saved_df.count() == len(products)
 
-    assert sorted(
-        row["category"] for row in saved_df.collect()
-    ) == sorted(
+    assert sorted(row["category"] for row in saved_df.collect()) == sorted(
         product[0] for product in products
     )
 
@@ -202,6 +203,7 @@ def test_write_gold(spark, tmp_path, products):
 # ============================================================
 # TEST 5 : Gestion de la session Spark
 # ============================================================
+
 
 def test_spark_session_injected(spark, tmp_path):
 

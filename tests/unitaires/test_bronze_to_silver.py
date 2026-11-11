@@ -1,18 +1,16 @@
-import json
 import os
 from unittest.mock import patch
 
 import pytest
-from pyspark.sql import Row
 
 from src.transformation.bronze_to_silver import (
     BronzeToSilverTransformer,
 )
 
-
 # ============================================================
 # TEST 1 : Sélection du dernier fichier Bronze
 # ============================================================
+
 
 @pytest.mark.parametrize(
     "timestamps, expected_index",
@@ -50,6 +48,7 @@ def test_get_latest_bronze_file(
 # TEST 2 : Aucun fichier Bronze
 # ============================================================
 
+
 def test_get_latest_bronze_file_not_found(tmp_path, spark):
 
     transformer = BronzeToSilverTransformer(
@@ -65,6 +64,7 @@ def test_get_latest_bronze_file_not_found(tmp_path, spark):
 # ============================================================
 # TEST 3 : Transformation des produits
 # ============================================================
+
 
 @pytest.mark.parametrize(
     "title, category, brand, sku, expected",
@@ -178,6 +178,7 @@ def test_transform_products(
 # TEST 4 : Validation des données
 # ============================================================
 
+
 @pytest.mark.parametrize(
     "is_valid",
     [True, False],
@@ -209,6 +210,7 @@ def test_validate_products(spark, tmp_path, is_valid):
 # ============================================================
 # TEST 5 : Écriture Parquet
 # ============================================================
+
 
 @pytest.mark.parametrize(
     "products",
@@ -248,6 +250,7 @@ def test_write_silver(spark, tmp_path, products):
 # ============================================================
 # TEST 6 : Gestion de la session Spark
 # ============================================================
+
 
 def test_spark_session_injected(spark, tmp_path):
 

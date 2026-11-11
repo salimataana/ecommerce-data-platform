@@ -4,12 +4,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-from src.ingestion.api_ingestion import ProductAPIClient, API_URL
-
+from src.ingestion.api_ingestion import API_URL, ProductAPIClient
 
 # ============================================================
 # TEST 1 : Configuration HTTP
 # ============================================================
+
 
 @pytest.mark.parametrize(
     "status_code",
@@ -37,6 +37,7 @@ def test_create_session_retry_status_codes(status_code):
 # ============================================================
 # TEST 2 : Pagination - Plusieurs scénarios
 # ============================================================
+
 
 @pytest.mark.parametrize(
     "pages, expected_ids, expected_calls",
@@ -93,18 +94,12 @@ def test_extract_products_pagination(
 
     assert result["total"] == len(expected_ids)
 
-    assert [
-        product["id"] for product in result["products"]
-    ] == expected_ids
+    assert [product["id"] for product in result["products"]] == expected_ids
 
     assert session.get.call_count == expected_calls
 
     for call_index in range(expected_calls):
-
-        expected_skip = sum(
-            len(page["products"])
-            for page in pages[:call_index]
-        )
+        expected_skip = sum(len(page["products"]) for page in pages[:call_index])
 
         session.get.assert_any_call(
             API_URL,
@@ -119,6 +114,7 @@ def test_extract_products_pagination(
 # ============================================================
 # TEST 3 : Validation des réponses API
 # ============================================================
+
 
 @pytest.mark.parametrize(
     "api_response, expected_error",
@@ -180,6 +176,7 @@ def test_extract_products_invalid_responses(
 # TEST 4 : Erreurs HTTP
 # ============================================================
 
+
 @pytest.mark.parametrize(
     "status_code",
     [400, 401, 403, 404, 500, 503],
@@ -193,9 +190,7 @@ def test_extract_products_http_errors(
     response = MagicMock()
     response.status_code = status_code
 
-    response.raise_for_status.side_effect = requests.HTTPError(
-        f"HTTP {status_code}"
-    )
+    response.raise_for_status.side_effect = requests.HTTPError(f"HTTP {status_code}")
 
     session = MagicMock()
     session.get.return_value = response
@@ -211,6 +206,7 @@ def test_extract_products_http_errors(
 # ============================================================
 # TEST 5 : Sauvegarde JSON Bronze
 # ============================================================
+
 
 @pytest.mark.parametrize(
     "products",
@@ -256,6 +252,7 @@ def test_save_raw_data(tmp_path, products):
 # ============================================================
 # TEST 6 : Vérifier l'exécution du pipeline
 # ============================================================
+
 
 @patch.object(ProductAPIClient, "save_raw_data")
 @patch.object(ProductAPIClient, "extract_products")

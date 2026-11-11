@@ -15,8 +15,7 @@ from src.quality.data_quality import (
             id="produit_valide",
         ),
         pytest.param(
-            [(1, "iPhone", 100.0, 10),
-             (2, "Samsung", 200.0, 20)],
+            [(1, "iPhone", 100.0, 10), (2, "Samsung", 200.0, 20)],
             True,
             id="plusieurs_produits_valides",
         ),
@@ -26,8 +25,7 @@ from src.quality.data_quality import (
             id="identifiant_null",
         ),
         pytest.param(
-            [(1, "iPhone", 100.0, 10),
-             (1, "Samsung", 200.0, 20)],
+            [(1, "iPhone", 100.0, 10), (1, "Samsung", 200.0, 20)],
             False,
             id="identifiant_duplique",
         ),

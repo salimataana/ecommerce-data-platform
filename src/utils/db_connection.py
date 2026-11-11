@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
@@ -14,7 +15,7 @@ def get_engine():
         password=os.getenv("DB_PASSWORD"),
         host=os.getenv("DB_HOST"),
         port=int(os.getenv("DB_PORT")),
-        database=os.getenv("DB_NAME")
+        database=os.getenv("DB_NAME"),
     )
 
     return create_engine(url)
@@ -26,14 +27,9 @@ def test_connection():
 
     try:
         with engine.connect() as connection:
-            result = connection.execute(
-                text("SELECT current_database(), current_user")
-            )
+            result = connection.execute(text("SELECT current_database(), current_user"))
 
-            print(
-                "Connexion PostgreSQL réussie :",
-                result.fetchone()
-            )
+            print("Connexion PostgreSQL réussie :", result.fetchone())
     finally:
         engine.dispose()
 
