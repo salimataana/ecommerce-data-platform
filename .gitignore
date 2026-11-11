@@ -1,0 +1,57 @@
+# Environnements Python
+.venv/
+.venv-airflow/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets et variables d'environnement
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Données locales
+data/bronze/
+data/silver/
+data/gold/
+data/raw/
+data/processed/
+
+# Airflow
+airflow/airflow.db
+airflow/airflow.cfg
+airflow/logs/
+airflow/simple_auth_manager_passwords.json.generated
+docker/airflow/logs/
+docker/airflow/airflow.db
+docker/airflow/simple_auth_manager_passwords.json.generated
+
+# dbt
+dbt/profiles/.user.yml
+dbt/**/target/
+dbt/**/logs/
+dbt/**/dbt_packages/
+dbt/**/.user.yml
+
+# IDE et système
+.idea/
+.vscode/
+.DS_Store
+
+# Spark
+metastore_db/
+derby.log
+spark-warehouse/
+
+# Fichiers temporaires
+*.log
+*.tmp
+
+# Fichiers temporaires SQLite
+*.db-shm
+*.db-wal

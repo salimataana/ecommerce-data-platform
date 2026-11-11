@@ -1,0 +1,126 @@
+services:
+  # PostgreSQL pour les données e-commerce
+  postgres:
+    image: postgres:16
+    container_name: ecommerce_postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ecommerce_db
+      POSTGRES_USER: ecommerce_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD manquant}
+
+    ports:
+      - "127.0.0.1:5434:5432"
+
+    volumes:
+      - ecommerce_postgres_data:/var/lib/postgresql/data
+
+  # Pipeline Python / PySpark
+  pipeline:
+    build: .
+    image: ecommerce-pipeline:1.0
+
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ecommerce_db
+      DB_USER: ecommerce_user
+      DB_PASSWORD: ${DB_PASSWORD}
+
+    volumes:
+      - ./data:/app/data
+
+    depends_on:
+      - postgres
+
+    profiles:
+      - pipeline
+
+  # Transformations dbt
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-postgres:1.9.latest
+    working_dir: /usr/app
+
+    volumes:
+      - ./dbt/ecommerce_dbt:/usr/app
+      - ./dbt/profiles:/root/.dbt
+
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ecommerce_db
+      DB_USER: ecommerce_user
+      DB_PASSWORD: ${DB_PASSWORD}
+
+    depends_on:
+      - postgres
+
+    profiles:
+      - dbt
+
+  # PostgreSQL dédié aux métadonnées Airflow
+  airflow-db:
+    image: postgres:16
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD:?AIRFLOW_DB_PASSWORD manquant}
+      POSTGRES_DB: airflow
+
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    profiles:
+      - airflow
+
+  # Apache Airflow 3
+  airflow:
+    build:
+      context: .
+      dockerfile: docker/airflow/Dockerfile
+
+    image: ecommerce-airflow:1.0
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:8081:8080"
+
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:${AIRFLOW_DB_PASSWORD}@airflow-db:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ecommerce_db
+      DB_USER: ecommerce_user
+      DB_PASSWORD: ${DB_PASSWORD}
+
+    volumes:
+      - ./docker/airflow/dags:/opt/airflow/dags
+      - ./docker/airflow/logs:/opt/airflow/logs
+      - ./src:/opt/airflow/project/src
+      - ./config:/opt/airflow/project/config
+      - ./data:/opt/airflow/project/data
+      - ./dbt/ecommerce_dbt:/opt/airflow/project/dbt/ecommerce_dbt
+      - ./dbt/profiles:/home/airflow/.dbt
+
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+
+    command: airflow standalone
+
+    profiles:
+      - airflow
+
+volumes:
+  ecommerce_postgres_data:
+  airflow_postgres_data:

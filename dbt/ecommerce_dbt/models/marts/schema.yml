@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: product_category_summary
+    description: "Statistiques des produits par catégorie"
+
+    columns:
+      - name: category
+        data_tests:
+          - not_null
+          - unique
+
+      - name: total_products
+        data_tests:
+          - not_null
+
+      - name: average_price
+        data_tests:
+          - not_null
+
+      - name: total_stock
+        data_tests:
+          - not_null
+
+      - name: stock_status
+        data_tests:
+          - not_null
