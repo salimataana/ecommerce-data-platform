@@ -1,16 +1,10 @@
 import logging
-from pathlib import Path
 import time
+from pathlib import Path
+
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col, explode
 
-from src.quality.data_quality import validate_products
-from src.transformation.product_transformations import (
-    convert_dates,
-    flatten_products,
-    normalize_products,
-)
-from src.utils.spark_session import create_spark_session
 from src.observability.metrics import (
     SILVER_DURATION,
     SILVER_ERRORS,
@@ -19,6 +13,13 @@ from src.observability.metrics import (
     SILVER_QUALITY_CHECKS,
     SILVER_RUNS,
 )
+from src.quality.data_quality import validate_products
+from src.transformation.product_transformations import (
+    convert_dates,
+    flatten_products,
+    normalize_products,
+)
+from src.utils.spark_session import create_spark_session
 
 logging.basicConfig(
     level=logging.INFO,

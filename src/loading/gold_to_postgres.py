@@ -1,13 +1,11 @@
 import logging
 import time
 from pathlib import Path
+
 import pandas as pd
 from pyspark.sql import DataFrame, SparkSession
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
-
-from src.utils.db_connection import get_engine
-from src.utils.spark_session import create_spark_session
 
 from src.observability.metrics import (
     POSTGRES_DURATION,
@@ -16,6 +14,8 @@ from src.observability.metrics import (
     POSTGRES_LOADED_ROWS,
     POSTGRES_RUNS,
 )
+from src.utils.db_connection import get_engine
+from src.utils.spark_session import create_spark_session
 
 logging.basicConfig(
     level=logging.INFO,

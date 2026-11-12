@@ -5,8 +5,6 @@ from pathlib import Path
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 
-from src.quality.data_quality import GoldDataValidator
-from src.utils.spark_session import create_spark_session
 from src.observability.metrics import (
     GOLD_DURATION,
     GOLD_ERRORS,
@@ -15,6 +13,8 @@ from src.observability.metrics import (
     GOLD_QUALITY_CHECKS,
     GOLD_RUNS,
 )
+from src.quality.data_quality import GoldDataValidator
+from src.utils.spark_session import create_spark_session
 
 logging.basicConfig(
     level=logging.INFO,

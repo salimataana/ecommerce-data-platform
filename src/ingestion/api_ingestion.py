@@ -1,12 +1,12 @@
 import json
 import logging
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-import time
 
 from src.observability.metrics import (
     INGESTION_DURATION,
