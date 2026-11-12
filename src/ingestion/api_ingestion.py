@@ -6,6 +6,14 @@ from pathlib import Path
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+import time
+
+from src.observability.metrics import (
+    INGESTION_DURATION,
+    INGESTION_ERRORS,
+    INGESTION_PRODUCTS,
+    INGESTION_RUNS,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s"
@@ -117,18 +125,52 @@ class ProductAPIClient:
         return filename
 
     def run(self):
-        """Exécute le pipeline d'ingestion."""
+        """Exécute le pipeline d'ingestion avec suivi des métriques."""
 
-        logger.info("Démarrage du pipeline")
+        logger.info("Démarrage du pipeline d'ingestion")
 
-        data = self.extract_products()
+        start_time = time.perf_counter()
 
-        self.save_raw_data(data)
+        try:
+            data = self.extract_products()
 
-        logger.info("Pipeline terminé avec succès")
+            filename = self.save_raw_data(data)
 
+            products_count = len(data["products"])
 
-# Fonctions conservées pour la compatibilité avec le code existant.
+            # Nombre de produits récupérés.
+            INGESTION_PRODUCTS.set(products_count)
+
+            # Incrémenter le nombre d'exécutions réussies.
+            INGESTION_RUNS.labels(status="success").inc()
+
+            logger.info(
+                "Pipeline terminé avec succès | produits=%s | fichier=%s",
+                products_count,
+                filename,
+            )
+
+        except Exception:
+            # Comptabiliser les échecs.
+            INGESTION_ERRORS.inc()
+            INGESTION_RUNS.labels(status="failure").inc()
+
+            # Afficher l'erreur et sa traceback.
+            logger.exception("Échec du pipeline d'ingestion")
+
+            # Propager l'erreur pour que les tests et la CI détectent l'échec.
+            raise
+
+        finally:
+            # Mesurer la durée, y compris lorsqu'une erreur survient.
+            duration = time.perf_counter() - start_time
+
+            INGESTION_DURATION.observe(duration)
+
+            logger.info(
+                "Durée d'exécution du pipeline : %.2f secondes",
+                duration,
+            )
 
 
 def create_session():

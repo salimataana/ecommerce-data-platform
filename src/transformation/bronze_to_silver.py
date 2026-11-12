@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-
+import time
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import col, explode
 
@@ -11,8 +11,22 @@ from src.transformation.product_transformations import (
     normalize_products,
 )
 from src.utils.spark_session import create_spark_session
+from src.observability.metrics import (
+    SILVER_DURATION,
+    SILVER_ERRORS,
+    SILVER_INPUT_ROWS,
+    SILVER_OUTPUT_ROWS,
+    SILVER_QUALITY_CHECKS,
+    SILVER_RUNS,
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
 
 logger = logging.getLogger(__name__)
+
 
 BRONZE_DIR = Path("data/bronze/products")
 SILVER_DIR = Path("data/silver/products")
@@ -83,13 +97,20 @@ class BronzeToSilverTransformer:
         return df_silver
 
     def validate(self, df: DataFrame) -> None:
-        """Vérifie les règles de qualité des données."""
+        """Vérifie les règles de qualité et enregistre les métriques."""
 
-        is_valid = validate_products(df)
+        try:
+            is_valid = validate_products(df)
 
-        if not is_valid:
-            raise ValueError("Échec de la validation des données")
+            if not is_valid:
+                raise ValueError("Échec de la validation des données")
 
+        except Exception:
+            SILVER_QUALITY_CHECKS.labels(status="failure").inc()
+            logger.exception("Validation des données Silver échouée")
+            raise
+
+        SILVER_QUALITY_CHECKS.labels(status="success").inc()
         logger.info("Validation des données réussie")
 
     def write(self, df: DataFrame) -> None:
@@ -103,20 +124,38 @@ class BronzeToSilverTransformer:
         )
 
     def run(self) -> None:
-        """Exécute le pipeline complet Bronze vers Silver."""
+        """Exécute le pipeline Bronze vers Silver avec observabilité."""
+
+        logger.info("Démarrage du pipeline Bronze vers Silver")
+
+        start_time = time.perf_counter()
 
         try:
             latest_file = self.get_latest_bronze_file()
 
             df = self.read(latest_file)
 
+            # Nombre de produits présents dans Bronze.
+            input_rows = df.select(explode(col("products")).alias("product")).count()
+
+            SILVER_INPUT_ROWS.set(input_rows)
+
+            logger.info("Nombre de produits Bronze : %s", input_rows)
+
+            # Transformation.
             df_transformed = self.transform(df)
 
+            # Validation de la qualité.
             self.validate(df_transformed)
 
+            # Nombre de produits après transformation.
+            output_rows = df_transformed.count()
+
+            SILVER_OUTPUT_ROWS.set(output_rows)
+
             logger.info(
-                "Nombre de produits : %s",
-                df_transformed.count(),
+                "Nombre de produits Silver : %s",
+                output_rows,
             )
 
             df_transformed.printSchema()
@@ -129,11 +168,31 @@ class BronzeToSilverTransformer:
                 "stock",
             ).show(5, truncate=20, vertical=True)
 
+            # Enregistrement au format Parquet.
             self.write(df_transformed)
+
+            SILVER_RUNS.labels(status="success").inc()
 
             logger.info("Pipeline Bronze vers Silver terminé avec succès")
 
+        except Exception:
+            SILVER_ERRORS.inc()
+            SILVER_RUNS.labels(status="failure").inc()
+
+            logger.exception("Échec du pipeline Bronze vers Silver")
+
+            raise
+
         finally:
+            duration = time.perf_counter() - start_time
+
+            SILVER_DURATION.observe(duration)
+
+            logger.info(
+                "Durée totale Bronze vers Silver : %.2f secondes",
+                duration,
+            )
+
             # Ne ferme Spark que si cette classe l'a créé.
             if self._owns_spark:
                 self.spark.stop()

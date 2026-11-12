@@ -1,12 +1,26 @@
 import logging
+import time
 from pathlib import Path
-
 import pandas as pd
 from pyspark.sql import DataFrame, SparkSession
-from sqlalchemy import Engine, text
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
 
 from src.utils.db_connection import get_engine
 from src.utils.spark_session import create_spark_session
+
+from src.observability.metrics import (
+    POSTGRES_DURATION,
+    POSTGRES_ERRORS,
+    POSTGRES_INPUT_ROWS,
+    POSTGRES_LOADED_ROWS,
+    POSTGRES_RUNS,
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +182,11 @@ class PostgresLoader:
         )
 
     def run(self) -> None:
-        """Exécute le chargement complet Gold vers PostgreSQL."""
+        """Exécute le chargement Gold vers PostgreSQL avec observabilité."""
+
+        logger.info("Démarrage du pipeline Gold vers PostgreSQL")
+
+        start_time = time.perf_counter()
 
         try:
             # 1. Lire les données Gold
@@ -177,21 +195,49 @@ class PostgresLoader:
             # 2. Convertir Spark vers Pandas
             df_pandas = self.to_pandas(df_gold)
 
-            # 3. Charger dans PostgreSQL
+            # 3. Mesurer les lignes à charger
+            input_rows = len(df_pandas)
+
+            POSTGRES_INPUT_ROWS.set(input_rows)
+
+            logger.info(
+                "Nombre de catégories Gold à charger : %s",
+                input_rows,
+            )
+
+            # 4. Charger dans PostgreSQL
             self.load(df_pandas)
+
+            # 5. Enregistrer les métriques après succès
+            POSTGRES_LOADED_ROWS.set(input_rows)
+            POSTGRES_RUNS.labels(status="success").inc()
 
             logger.info(
                 "Chargement PostgreSQL réussi : %s catégories",
-                len(df_pandas),
+                input_rows,
             )
 
             print("Chargement PostgreSQL réussi !")
-            print(
-                "Nombre de catégories :",
-                len(df_pandas),
-            )
+            print("Nombre de catégories :", input_rows)
+
+        except Exception:
+            POSTGRES_ERRORS.inc()
+            POSTGRES_RUNS.labels(status="failure").inc()
+
+            logger.exception("Échec du pipeline Gold vers PostgreSQL")
+
+            raise
 
         finally:
+            duration = time.perf_counter() - start_time
+
+            POSTGRES_DURATION.observe(duration)
+
+            logger.info(
+                "Durée totale Gold vers PostgreSQL : %.2f secondes",
+                duration,
+            )
+
             # Fermer uniquement les ressources créées par la classe
             if self._owns_engine:
                 self.engine.dispose()
