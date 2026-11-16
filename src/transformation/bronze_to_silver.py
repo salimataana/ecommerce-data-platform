@@ -11,8 +11,12 @@ from src.observability.metrics import (
     SILVER_INPUT_ROWS,
     SILVER_OUTPUT_ROWS,
     SILVER_QUALITY_CHECKS,
+    SILVER_QUALITY_RULES_PASSED,
+    SILVER_QUALITY_RULES_TOTAL,
+    SILVER_QUALITY_STATUS,
     SILVER_RUNS,
 )
+from src.observability.push_metrics import publish_metrics
 from src.quality.data_quality import validate_products
 from src.transformation.product_transformations import (
     convert_dates,
@@ -98,21 +102,36 @@ class BronzeToSilverTransformer:
         return df_silver
 
     def validate(self, df: DataFrame) -> None:
-        """Vérifie les règles de qualité et enregistre les métriques."""
+        """Vérifie la qualité Silver et enregistre les métriques."""
+
+        SILVER_QUALITY_STATUS.set(0)
+        SILVER_QUALITY_RULES_TOTAL.set(0)
+        SILVER_QUALITY_RULES_PASSED.set(0)
 
         try:
-            is_valid = validate_products(df)
+            summary = validate_products(df, return_summary=True)
 
-            if not is_valid:
-                raise ValueError("Échec de la validation des données")
+            SILVER_QUALITY_RULES_TOTAL.set(summary["total_rules"])
+            SILVER_QUALITY_RULES_PASSED.set(summary["passed_rules"])
+
+            if not summary["success"]:
+                raise ValueError("Échec de la validation des données Silver")
+
+            SILVER_QUALITY_STATUS.set(1)
+            SILVER_QUALITY_CHECKS.labels(status="success").inc()
+
+            logger.info(
+                "Qualité Silver validée : %s/%s règles réussies",
+                summary["passed_rules"],
+                summary["total_rules"],
+            )
 
         except Exception:
+            SILVER_QUALITY_STATUS.set(0)
             SILVER_QUALITY_CHECKS.labels(status="failure").inc()
+
             logger.exception("Validation des données Silver échouée")
             raise
-
-        SILVER_QUALITY_CHECKS.labels(status="success").inc()
-        logger.info("Validation des données réussie")
 
     def write(self, df: DataFrame) -> None:
         """Enregistre les données Silver au format Parquet."""
@@ -193,6 +212,8 @@ class BronzeToSilverTransformer:
                 "Durée totale Bronze vers Silver : %.2f secondes",
                 duration,
             )
+
+            publish_metrics("ecommerce_bronze_to_silver")
 
             # Ne ferme Spark que si cette classe l'a créé.
             if self._owns_spark:

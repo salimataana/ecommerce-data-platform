@@ -14,6 +14,7 @@ from src.observability.metrics import (
     POSTGRES_LOADED_ROWS,
     POSTGRES_RUNS,
 )
+from src.observability.push_metrics import publish_metrics
 from src.utils.db_connection import get_engine
 from src.utils.spark_session import create_spark_session
 
@@ -237,6 +238,8 @@ class PostgresLoader:
                 "Durée totale Gold vers PostgreSQL : %.2f secondes",
                 duration,
             )
+
+            publish_metrics("ecommerce_gold_to_postgres")
 
             # Fermer uniquement les ressources créées par la classe
             if self._owns_engine:

@@ -62,6 +62,20 @@ SILVER_QUALITY_CHECKS = Counter(
     ["status"],
 )
 
+SILVER_QUALITY_STATUS = Gauge(
+    "silver_quality_status",
+    "Statut de la derniere validation Silver : 1=succes, 0=echec",
+)
+
+SILVER_QUALITY_RULES_TOTAL = Gauge(
+    "silver_quality_rules_total",
+    "Nombre de regles Great Expectations evaluees dans Silver",
+)
+
+SILVER_QUALITY_RULES_PASSED = Gauge(
+    "silver_quality_rules_passed",
+    "Nombre de regles Great Expectations reussies dans Silver",
+)
 
 # ============================================================
 # OBSERVABILITÉ : SILVER → GOLD
@@ -99,6 +113,20 @@ GOLD_QUALITY_CHECKS = Counter(
     ["status"],
 )
 
+GOLD_QUALITY_STATUS = Gauge(
+    "gold_quality_status",
+    "Statut de la validation Gold : 1=succes, 0=echec",
+)
+
+GOLD_QUALITY_RULES_TOTAL = Gauge(
+    "gold_quality_rules_total",
+    "Nombre de regles Great Expectations evaluees dans Gold",
+)
+
+GOLD_QUALITY_RULES_PASSED = Gauge(
+    "gold_quality_rules_passed",
+    "Nombre de regles Great Expectations reussies dans Gold",
+)
 
 # ============================================================
 # OBSERVABILITÉ : GOLD → POSTGRESQL

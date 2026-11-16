@@ -1,4 +1,5 @@
 import logging
+from typing import Literal, overload
 
 import great_expectations as gx
 from pyspark.sql import DataFrame
@@ -24,6 +25,7 @@ class ProductDataValidator:
         self.context = None
         self.batch = None
         self.suite = None
+        self.validation_summary = None
 
     def create_batch(self):
         """Prépare le DataFrame Spark pour Great Expectations."""
@@ -68,12 +70,22 @@ class ProductDataValidator:
         return self.suite
 
     def validate(self) -> bool:
-        """Exécute les contrôles et retourne leur résultat global."""
+        """Exécute les contrôles et conserve leurs résultats détaillés."""
 
         batch = self.create_batch()
         suite = self.create_expectation_suite()
 
         result = batch.validate(suite)
+
+        total_rules = len(result.results)
+
+        passed_rules = sum(1 for validation in result.results if validation.success)
+
+        self.validation_summary = {
+            "success": bool(result.success),
+            "total_rules": total_rules,
+            "passed_rules": passed_rules,
+        }
 
         for validation in result.results:
             logger.info(
@@ -83,8 +95,10 @@ class ProductDataValidator:
             )
 
         logger.info(
-            "Qualité des produits : %s",
+            "Qualité des produits : %s | Règles réussies : %s/%s",
             result.success,
+            passed_rules,
+            total_rules,
         )
 
         return bool(result.success)
@@ -95,15 +109,27 @@ class ProductDataValidator:
 # ============================================================
 
 
-def validate_products(df: DataFrame) -> bool:
-    """
-    Point d'entrée historique conservé pour éviter
-    de modifier BronzeToSilverTransformer.
-    """
+@overload
+def validate_products(
+    df: DataFrame, *, return_summary: Literal[False] = False
+) -> bool: ...
+
+
+@overload
+def validate_products(df: DataFrame, *, return_summary: Literal[True]) -> dict: ...
+
+
+def validate_products(df: DataFrame, *, return_summary: bool = False) -> bool | dict:
+    """Valide les produits et retourne éventuellement le résumé détaillé."""
 
     validator = ProductDataValidator(dataframe=df)
 
-    return validator.validate()
+    is_valid = validator.validate()
+
+    if return_summary:
+        return validator.validation_summary
+
+    return is_valid
 
 
 class GoldDataValidator:
@@ -113,6 +139,7 @@ class GoldDataValidator:
 
     def __init__(self, dataframe: DataFrame):
         self.dataframe = dataframe
+        self.validation_summary = None
 
     def validate(self) -> bool:
         context = gx.get_context(mode="ephemeral")
@@ -145,6 +172,21 @@ class GoldDataValidator:
         )
 
         result = batch.validate(suite)
+
+        total_rules = len(result.results)
+        passed_rules = sum(1 for validation in result.results if validation.success)
+
+        self.validation_summary = {
+            "success": bool(result.success),
+            "total_rules": total_rules,
+            "passed_rules": passed_rules,
+        }
+
+        logger.info(
+            "Qualité Gold : %s/%s règles réussies",
+            passed_rules,
+            total_rules,
+        )
 
         for validation in result.results:
             logger.info(

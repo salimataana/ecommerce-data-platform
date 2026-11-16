@@ -11,8 +11,12 @@ from src.observability.metrics import (
     GOLD_INPUT_ROWS,
     GOLD_OUTPUT_ROWS,
     GOLD_QUALITY_CHECKS,
+    GOLD_QUALITY_RULES_PASSED,
+    GOLD_QUALITY_RULES_TOTAL,
+    GOLD_QUALITY_STATUS,
     GOLD_RUNS,
 )
+from src.observability.push_metrics import publish_metrics
 from src.quality.data_quality import GoldDataValidator
 from src.utils.spark_session import create_spark_session
 
@@ -94,24 +98,35 @@ class SilverToGoldTransformer:
         )
 
     def validate(self, df: DataFrame) -> None:
-        """Vérifie la qualité des indicateurs Gold."""
+        """Vérifie la qualité Gold et enregistre les métriques."""
+
+        GOLD_QUALITY_STATUS.set(0)
+        GOLD_QUALITY_RULES_TOTAL.set(0)
+        GOLD_QUALITY_RULES_PASSED.set(0)
 
         try:
             validator = GoldDataValidator(df)
+            is_valid = validator.validate()
 
-            if not validator.validate():
+            summary = validator.validation_summary
+
+            if summary is not None:
+                GOLD_QUALITY_RULES_TOTAL.set(summary["total_rules"])
+                GOLD_QUALITY_RULES_PASSED.set(summary["passed_rules"])
+
+            if not is_valid:
                 raise ValueError("Échec de la validation des données Gold")
 
+            GOLD_QUALITY_STATUS.set(1)
+            GOLD_QUALITY_CHECKS.labels(status="success").inc()
+
+            logger.info("Validation des données Gold réussie")
+
         except Exception:
+            GOLD_QUALITY_STATUS.set(0)
             GOLD_QUALITY_CHECKS.labels(status="failure").inc()
-
             logger.exception("Validation des données Gold échouée")
-
             raise
-
-        GOLD_QUALITY_CHECKS.labels(status="success").inc()
-
-        logger.info("Validation des données Gold réussie")
 
     def run(self) -> None:
         """Exécute le pipeline Silver vers Gold avec observabilité."""
@@ -177,6 +192,8 @@ class SilverToGoldTransformer:
                 "Durée totale Silver vers Gold : %.2f secondes",
                 duration,
             )
+
+            publish_metrics("ecommerce_silver_to_gold")
 
             # Fermer uniquement les sessions Spark créées par cette classe.
             if self._owns_spark:

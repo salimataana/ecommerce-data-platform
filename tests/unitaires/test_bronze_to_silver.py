@@ -196,15 +196,26 @@ def test_validate_products(spark, tmp_path, is_valid):
         ["id", "title"],
     )
 
+    summary = {
+        "success": is_valid,
+        "total_rules": 6,
+        "passed_rules": 6 if is_valid else 5,
+    }
+
     with patch(
         "src.transformation.bronze_to_silver.validate_products",
-        return_value=is_valid,
-    ):
+        return_value=summary,
+    ) as mock_validate:
         if is_valid:
             transformer.validate(df)
         else:
             with pytest.raises(ValueError, match="Échec de la validation"):
                 transformer.validate(df)
+
+        mock_validate.assert_called_once_with(
+            df,
+            return_summary=True,
+        )
 
 
 # ============================================================

@@ -14,6 +14,7 @@ from src.observability.metrics import (
     INGESTION_PRODUCTS,
     INGESTION_RUNS,
 )
+from src.observability.push_metrics import publish_metrics
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s"
@@ -171,6 +172,8 @@ class ProductAPIClient:
                 "Durée d'exécution du pipeline : %.2f secondes",
                 duration,
             )
+
+            publish_metrics("ecommerce_ingestion")
 
 
 def create_session():
